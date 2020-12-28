@@ -1,9 +1,13 @@
-version: "3.7"
+version: "3.3"
 
 services:
 
   traefik:
+    # image: traefik:v2.1.4
+    # image: traefik:v2.0.1
     image: traefik:v2.2
+    container_name: traefik
+    restart: always
     networks:
       - traefik
       - backend
@@ -11,11 +15,13 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/etc/localtime:/etc/localtime:ro"
       - "letsencrypt:/etc/letsencrypt"
     command:
-      - "--log.level=DEBUG"
+      - "--log.level=INFO"
       - "--api.dashboard=true"
+      - "--serverstransport.insecureskipverify=true"
       # entrypoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
@@ -29,27 +35,31 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.httpChallenge.entrypoint=web"
       - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/etc/letsencrypt/acme.json"
-      # jaeger
-      - "--tracing.jaeger=true"
-      - "--tracing.serviceName=traefik"
-      - "--tracing.jaeger.samplingServerURL=http://jaeger:5778/sampling"
-      - "--tracing.jaeger.samplingType=const"
-      - "--tracing.jaeger.samplingParam=1.0"
-      - "--tracing.jaeger.localAgentHostPort=jaeger:6831"
+      # # jaeger
+      # - "--tracing.jaeger=true"
+      # - "--tracing.serviceName=traefik"
+      # - "--tracing.jaeger.samplingServerURL=http://jaeger:5778/sampling"
+      # - "--tracing.jaeger.samplingType=const"
+      # - "--tracing.jaeger.samplingParam=1.0"
+      # - "--tracing.jaeger.localAgentHostPort=jaeger:6831"
       # influxdb
       - "--metrics.influxdb=true"
       - "--metrics.influxdb.address=influxdb:8089"
       - "--metrics.influxdb.protocol=udp"
-      - "--metrics.influxdb.database=${COMPOSE_PROJECT_NAME}"
-      - "--metrics.influxdb.retentionPolicy=autogen"
-      - "--metrics.influxdb.username=${INFLUXDB_ADMIN_USER}"
-      - "--metrics.influxdb.password=${INFLUXDB_ADMIN_PASSWORD}"
-      - "--metrics.influxdb.addEntryPointsLabels=true"
-      - "--metrics.influxdb.addServicesLabels=true"
-      - "--metrics.influxdb.pushInterval=30s"
+      # ---
+      # - "--metrics.influxdb.database=${COMPOSE_PROJECT_NAME}"
+      # - "--metrics.influxdb.retentionPolicy=autogen"
+      # - "--metrics.influxdb.username=${INFLUXDB_ADMIN_USER}"
+      # - "--metrics.influxdb.password=${INFLUXDB_ADMIN_PASSWORD}"
+      # - "--metrics.influxdb.addEntryPointsLabels=true"
+      # - "--metrics.influxdb.addServicesLabels=true"
+      # - "--metrics.influxdb.pushInterval=30s"
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik"
+      # load-balancer
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_traefik.loadbalancer.server.port=80"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_traefik.loadbalancer.server.scheme=http"
       # http entrypoint
       - "traefik.http.routers.traefikapi.rule=Host(`traefik.${DOMAIN_NAME}`)"
       - "traefik.http.routers.traefikapi.entrypoints=web"
@@ -70,38 +80,38 @@ services:
       # echo $(htpasswd -nb user password) | sed -e s/\\$/\\$\\$/g
       # default -> user:traefik
   
-  jaeger:
-    image: jaegertracing/all-in-one:1.17
-    networks:
-      - traefik
-    environment:
-      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
-    ports:
-      - 5775:5775/udp
-      - 6831:6831/udp
-      - 6832:6832/udp
-      - 5778:5778
-      - 16686:16686
-      - 14268:14268
-      - 14250:14250
-      - 9411:9411
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik"
-      # load-balancer
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_jaeger.loadbalancer.server.port=16686"
-      # http entrypoint
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger.rule=Host(`jaeger.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger.entrypoints=web"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger.middlewares=redirect"
-      # middlewares
-      - "traefik.http.middlewares.redirect.redirectscheme.scheme=https"
-      # https entrypoint
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.rule=Host(`jaeger.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.tls=true"
-      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.middlewares=authtraefik"
+  # jaeger:
+  #   image: jaegertracing/all-in-one:1.17
+  #   networks:
+  #     - traefik
+  #   environment:
+  #     - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+  #   ports:
+  #     - 5775:5775/udp
+  #     - 6831:6831/udp
+  #     - 6832:6832/udp
+  #     - 5778:5778
+  #     - 16686:16686
+  #     - 14268:14268
+  #     - 14250:14250
+  #     - 9411:9411
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.docker.network=traefik"
+  #     # load-balancer
+  #     - "traefik.http.services.${COMPOSE_PROJECT_NAME}_jaeger.loadbalancer.server.port=16686"
+  #     # http entrypoint
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger.rule=Host(`jaeger.${DOMAIN_NAME}`)"
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger.entrypoints=web"
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger.middlewares=redirect"
+  #     # middlewares
+  #     - "traefik.http.middlewares.redirect.redirectscheme.scheme=https"
+  #     # https entrypoint
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.rule=Host(`jaeger.${DOMAIN_NAME}`)"
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.entrypoints=websecure"
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.tls=true"
+  #     # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.tls.certresolver=letsencrypt"
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.middlewares=authtraefik"
 
   influxdb:
     image: influxdb:latest
@@ -133,6 +143,7 @@ services:
       - "traefik.docker.network=traefik"
       # load-balancer
       - "traefik.http.services.${COMPOSE_PROJECT_NAME}_graf.loadbalancer.server.port=8888"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_graf.loadbalancer.server.scheme=http"
       # http entrypoint
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf.rule=Host(`graf.${DOMAIN_NAME}`)"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf.entrypoints=web"
@@ -143,32 +154,32 @@ services:
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf_secure.rule=Host(`graf.${DOMAIN_NAME}`)"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf_secure.entrypoints=websecure"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf_secure.tls=true"
-      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_secure.tls.certresolver=letsencrypt"
+      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf_secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf_secure.middlewares=authtraefik"
 
-  whoami:
-    image: containous/whoami:v1.3.0
-    networks:
-      - traefik
-    command:
-      - --port=8080
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik"
-      # load-balancer
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_whoami.loadbalancer.server.port=8080"
-      # http entrypoint
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami.rule=Host(`whoami.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami.entrypoints=web"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami.middlewares=redirect"
-      # middlewares
-      - "traefik.http.middlewares.redirect.redirectscheme.scheme=https"
-      # https entrypoint
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.rule=Host(`whoami.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.tls=true"
-      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_secure.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.middlewares=authtraefik"
+  # whoami:
+  #   image: containous/whoami:v1.3.0
+  #   networks:
+  #     - traefik
+  #   command:
+  #     - --port=8080
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.docker.network=traefik"
+  #     # load-balancer
+  #     - "traefik.http.services.${COMPOSE_PROJECT_NAME}_whoami.loadbalancer.server.port=8080"
+  #     # http entrypoint
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami.rule=Host(`whoami.${DOMAIN_NAME}`)"
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami.entrypoints=web"
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami.middlewares=redirect"
+  #     # middlewares
+  #     - "traefik.http.middlewares.redirect.redirectscheme.scheme=https"
+  #     # https entrypoint
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.rule=Host(`whoami.${DOMAIN_NAME}`)"
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.entrypoints=websecure"
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.tls=true"
+  #     # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_secure.tls.certresolver=letsencrypt"
+  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.middlewares=authtraefik"
 
 volumes:
   letsencrypt:
@@ -180,5 +191,5 @@ volumes:
 networks:
   backend:
   traefik:
-    external:
-      name: traefik
+    external: true
+      
