@@ -46,55 +46,55 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "/etc/localtime:/etc/localtime:ro"
     
-  chronograf:
-    image: ${CHRONOGRAF_IMAGE}:${CHRONOGRAF_IMAGE_TAG}
-    restart: always
-    networks:
-      - public
-      - private
-    depends_on:
-      - influxdb
-    volumes:
-      - chronograf_data:/var/lib/chronograf
-      - chronograf_conf:/etc/chronograf
-    labels:
-      # enable traefik
-      - "traefik.enable=true"
-      - "traefik.docker.network=${PUBLIC_NETWORK}"
-      # define https redirect middleware.
-      - "traefik.http.middlewares.https_redirect.redirectscheme.scheme=https"
-      # specify exposed port.
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.loadbalancer.server.port=${CHRONOGRAF_PUBLIC_PORT}"
-      # define http entrypoint.
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.entrypoints=web"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.rule=Host(`${CHRONOGRAF_DNS_NAME}.${DNS_DOMAIN}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.middlewares=https_redirect"
-      # define https entrypoint.
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.rule=Host(`${CHRONOGRAF_DNS_NAME}.${DNS_DOMAIN}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.tls=true"
-      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.tls.certresolver=letsencrypt"
-      # define and set basic auth middleware for secure route (optional).
-      - "traefik.http.middlewares.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_auth.basicauth.users=${CHRONOGRAF_USERNAME}:${CHRONOGRAF_PASSWORD_HASH}"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.middlewares=${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_auth"
-    environment:
-      REPORTING_DISABLED: "true"
-      INFLUXDB_URL: "http://influxdb:8086"
+#   chronograf:
+#     image: ${CHRONOGRAF_IMAGE}:${CHRONOGRAF_IMAGE_TAG}
+#     restart: always
+#     networks:
+#       - public
+#       - private
+#     depends_on:
+#       - influxdb
+#     volumes:
+#       - chronograf_data:/var/lib/chronograf
+#       - chronograf_conf:/etc/chronograf
+#     labels:
+#       # enable traefik
+#       - "traefik.enable=true"
+#       - "traefik.docker.network=${PUBLIC_NETWORK}"
+#       # define https redirect middleware.
+#       - "traefik.http.middlewares.https_redirect.redirectscheme.scheme=https"
+#       # specify exposed port.
+#       - "traefik.http.services.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.loadbalancer.server.port=${CHRONOGRAF_PUBLIC_PORT}"
+#       # define http entrypoint.
+#       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.entrypoints=web"
+#       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.rule=Host(`${CHRONOGRAF_DNS_NAME}.${DNS_DOMAIN}`)"
+#       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.middlewares=https_redirect"
+#       # define https entrypoint.
+#       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.entrypoints=websecure"
+#       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.rule=Host(`${CHRONOGRAF_DNS_NAME}.${DNS_DOMAIN}`)"
+#       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.tls=true"
+#       # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.tls.certresolver=letsencrypt"
+#       # define and set basic auth middleware for secure route (optional).
+#       - "traefik.http.middlewares.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_auth.basicauth.users=${CHRONOGRAF_USERNAME}:${CHRONOGRAF_PASSWORD_HASH}"
+#       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.middlewares=${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_auth"
+#     environment:
+#       REPORTING_DISABLED: "true"
+#       INFLUXDB_URL: "http://influxdb:8086"
 
-  influxdb:
-    image: ${INFLUXDB_IMAGE}:${INFLUXDB_IMAGE_TAG}
-    restart: always
-    networks:
-      - private
-    volumes:
-      - influxdb_data:/var/lib/influxdb
-      - influxdb_conf:/etc/influxdb
-    environment:
-      INFLUXDB_UDP_ENABLED: "true"
-      INFLUXDB_REPORTING_DISABLED: "true"
+#   influxdb:
+#     image: ${INFLUXDB_IMAGE}:${INFLUXDB_IMAGE_TAG}
+#     restart: always
+#     networks:
+#       - private
+#     volumes:
+#       - influxdb_data:/var/lib/influxdb
+#       - influxdb_conf:/etc/influxdb
+#     environment:
+#       INFLUXDB_UDP_ENABLED: "true"
+#       INFLUXDB_REPORTING_DISABLED: "true"
 
-volumes:
-  influxdb_data:
-  influxdb_conf:
-  chronograf_data:
-  chronograf_conf:
+# volumes:
+#   influxdb_data:
+#   influxdb_conf:
+#   chronograf_data:
+#   chronograf_conf:
