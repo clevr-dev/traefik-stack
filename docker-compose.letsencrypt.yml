@@ -18,10 +18,10 @@ services:
       - "--providers.docker.endpoint=unix:///var/run/docker.sock"
       - "--providers.docker.watch=true"
       - "--providers.docker.exposedbydefault=false"
-      # influxdb config
-      - "--metrics.influxdb=true"
-      - "--metrics.influxdb.address=influxdb:8089"
-      - "--metrics.influxdb.protocol=udp"
+      # # influxdb config
+      # - "--metrics.influxdb=true"
+      # - "--metrics.influxdb.address=influxdb:8089"
+      # - "--metrics.influxdb.protocol=udp"
       # # pilot token
       # - "--pilot.token=${TRAEFIK_PILOT_TOKEN}"
       # # file config provider (for TLS in dev)
