@@ -1,0 +1,12 @@
+---
+version: "3.3"
+
+services:
+  mkcert:
+    image: "${MKCERT_IMAGE}"
+    command: "${DNS_DOMAIN}"
+    user: "1000:1000"
+    restart: "no"  # produce certs and exit.
+    working_dir: "/certs"
+    volumes:
+      - "${PWD}/certs:/certs"

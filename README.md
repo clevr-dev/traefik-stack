@@ -1,60 +1,87 @@
+> This project is part of the [clevr-compose-stacks](...). [Learn more...](...)
+
 # traefik-stack
 
-traefik + jaeger + influxdb + chronograf
+traefik + influxdb + chronograf
 
-> Configuration derived from [this blog](https://containo.us/blog/traefik-2-0-docker-101-fc2893944b9d/); [this example](https://github.com/containous/blog-posts/blob/master/2019_09_10-101_docker/docker-compose-09.yml).
+## Configure
 
-## setup
+1. Edit the docker-compose environment file `.env`
 
-1. Create a network named `traefik`:
+2. Create the necessary DNS records (or modify the hosts file) to ensure proper DNS resolution from the domain name to the Traefik instance:
 
-* if all containers will be running from same host:
+* `traefik.clevrdev.com` <- traefik dashboard
+* `traefikviz.clevrdev.com`  <- chronograf ui
 
-```
+3. Create a Docker network based on what is defined for `PUBLIC_NETWORK` in `.env`; e.g., `traefik`:
+
+```shell
 docker network create traefik
+
+# docker network create traefik -d overlay --attachable
 ```
 
-* If you want Traefik to watch for containers on remote hosts in a Docker Swarm cluster, create an attacheable overlay network:
+### mkcert
+
+If you're not relying on LetsEncrypt for certificates (e.g., for local development), use mkcert to generate the following files in the `certs` directory:
 
 ```
-docker network create -d overlay --attachable traefik
+docker-compose -f docker-compose.mkcert.yml up
 ```
 
-2. Populate the `.env` file with desired values.
-
-3. Customize `docker-compose.yml`:
-   * Set unique basic auth credentials by setting the `traefik.http.middlewares.authtraefik.basicauth.users` label of the `traefik` service.
-   * As desired, *uncomment* `traefik.http.routers.traefikapi_secure.tls.certresolver=letsencrypt` to request a LetsEncrypt certificate for each desired service.
-
-4. Create the necessary DNS records *or* modify your hosts file to ensure proper DNS resolution:
-
-* `traefik.mydomain.com` <- traefik dashboard
-* `jaeger.mydomain.com`  <- jaeger ui
-* `graf.mydomain.com`    <- chronograf
-* `whoami.mydomain.com`  <- example app
-
-For example:
+The command will produce a wildcard certificate for the domain `DNS_DOMAIN` specified in `.env`, along with the root CA public certificate that issued it, then exit:
 
 ```
-127.0.0.1 traefik.mydomain.com
-127.0.0.1 jaeger.mydomain.com
-127.0.0.1 whoami.mydomain.com
-127.0.0.1 graf.mydomain.com
+certs/
+├── cert-key.pem
+├── cert.pem
+└── rootCA.pem
 ```
 
-5. Launch the stack with:
+Trust the `rootCA.pem` cert on your local computer / tablet / browser. Instructions for trusting a CA in Chrome are [here](https://support.securly.com/hc/en-us/articles/206081828-How-to-manually-install-the-Securly-SSL-certificate-in-Chrome).
 
-```
-docker-compose up
-```
+## Build
 
-or,
+Building the image locally is only required if changes to the image are made.
 
-```
-docker-compose up --scale whoami=3
+```bash
+docker-compose -f image/docker-compose.build.yml build
 ```
 
-6. Access service(s) from the browser; e.g., `https://whoami.mydomain.com`
+Publish changes to Docker registry:
 
-> Note: if not using LetsEncrypt, Traefik will issue self-signed certs that may require you "accept risk" upon first logon.
+```bash
+docker-compose -f image/docker-compose.build.yml push
+```
 
+## Start
+
+configure for use with local certs:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.local.yml up
+```
+
+configure for use with LetsEncrypt:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.letsencrypt.yml up
+```
+
+## Use
+
+Access the app in your browser according to variables set in the environment file (`.env`): `https://<APP_DNS_NAME>.<DNS_DOMAIN>`; e.g:
+
+- `https://traefik.clevrdev.com`
+- `https://traefikviz.clevrdev.com`
+
+With this in place, other apps from the [clevr-compose-stacks] repo can be configured and deployed with ease.
+
+## References
+
+- https://containo.us/blog/traefik-2-0-docker-101-fc2893944b9d/
+- https://github.com/containous/blog-posts/blob/master/2019_09_10-101_docker/docker-compose-09.yml
+
+## Support
+
+TODO: Links

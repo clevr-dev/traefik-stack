@@ -1,195 +1,100 @@
+---
 version: "3.3"
 
-services:
+networks:
+  public:
+    name: ${PUBLIC_NETWORK}
+    external: true
+  # private:
 
+services:
   traefik:
-    # image: traefik:v2.1.4
-    # image: traefik:v2.0.1
-    image: traefik:v2.2
-    container_name: traefik
+    image: ${TRAEFIK_IMAGE}
     restart: always
     networks:
-      - traefik
-      - backend
+      - public
+      # - private
+    labels:
+      # enable traefik
+      - "traefik.enable=true"
+      - "traefik.docker.network=${PUBLIC_NETWORK}"
+      # define https redirect middleware.
+      - "traefik.http.middlewares.https_redirect.redirectscheme.scheme=https"
+      # specify exposed port.
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}.loadbalancer.server.port=${TRAEFIK_PUBLIC_PORT}"
+      # define http entrypoint.
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}.entrypoints=web"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}.rule=Host(`${TRAEFIK_DNS_NAME}.${DNS_DOMAIN}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}.middlewares=https_redirect"
+      # define https entrypoint.
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}_secure.entrypoints=websecure"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}_secure.rule=Host(`${TRAEFIK_DNS_NAME}.${DNS_DOMAIN}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}_secure.tls=true"
+      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}_secure.tls.certresolver=letsencrypt"
+      # define and set basic auth middleware for secure route (optional).
+      - "traefik.http.middlewares.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}_auth.basicauth.users=${TRAEFIK_USERNAME}:${TRAEFIK_PASSWORD_HASH}"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}_secure.middlewares=${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}_auth"
+      # Allow the dashboard access the traefik api
+      # https://doc.traefik.io/traefik/operations/dashboard/#dashboard-router-rule
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${TRAEFIK_DNS_NAME}_secure.service=api@internal" 
     ports:
       - "80:80"
       - "443:443"
+    depends_on:
+      - influxdb
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "/etc/localtime:/etc/localtime:ro"
-      - "letsencrypt:/etc/letsencrypt"
-    command:
-      - "--log.level=INFO"
-      - "--api.dashboard=true"
-      - "--serverstransport.insecureskipverify=true"
-      # entrypoints
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      # docker provider
-      - "--providers.docker=true"
-      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
-      - "--providers.docker.watch=true"
-      - "--providers.docker.exposedbydefault=false"
-      # letsencrypt
-      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.httpChallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/etc/letsencrypt/acme.json"
-      # # jaeger
-      # - "--tracing.jaeger=true"
-      # - "--tracing.serviceName=traefik"
-      # - "--tracing.jaeger.samplingServerURL=http://jaeger:5778/sampling"
-      # - "--tracing.jaeger.samplingType=const"
-      # - "--tracing.jaeger.samplingParam=1.0"
-      # - "--tracing.jaeger.localAgentHostPort=jaeger:6831"
-      # influxdb
-      - "--metrics.influxdb=true"
-      - "--metrics.influxdb.address=influxdb:8089"
-      - "--metrics.influxdb.protocol=udp"
-      # ---
-      # - "--metrics.influxdb.database=${COMPOSE_PROJECT_NAME}"
-      # - "--metrics.influxdb.retentionPolicy=autogen"
-      # - "--metrics.influxdb.username=${INFLUXDB_ADMIN_USER}"
-      # - "--metrics.influxdb.password=${INFLUXDB_ADMIN_PASSWORD}"
-      # - "--metrics.influxdb.addEntryPointsLabels=true"
-      # - "--metrics.influxdb.addServicesLabels=true"
-      # - "--metrics.influxdb.pushInterval=30s"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik"
-      # load-balancer
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_traefik.loadbalancer.server.port=80"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_traefik.loadbalancer.server.scheme=http"
-      # http entrypoint
-      - "traefik.http.routers.traefikapi.rule=Host(`traefik.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.traefikapi.entrypoints=web"
-      - "traefik.http.routers.traefikapi.middlewares=redirect"
-      # middlewares
-      - "traefik.http.middlewares.redirect.redirectscheme.scheme=https"
-      # https entrypoint
-      - "traefik.http.routers.traefikapi_secure.rule=Host(`traefik.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.traefikapi_secure.entrypoints=websecure"
-      - "traefik.http.routers.traefikapi_secure.tls=true"
-      - "traefik.http.routers.traefikapi_secure.service=api@internal" # Let the dashboard access the traefik api
-      # - "traefik.http.routers.traefikapi_secure.tls.certresolver=letsencrypt"
-      # basic auth
-      - "traefik.http.routers.traefikapi_secure.middlewares=authtraefik"
-      - "traefik.http.middlewares.authtraefik.basicauth.users=user:$$apr1$$0ENAq8E0$$QnBPhoBFpObkc8iFaaCjh."
-      # Note: all dollar signs in the hash need to be doubled for escaping.
-      # To create user:password pair, it's possible to use this command:
-      # echo $(htpasswd -nb user password) | sed -e s/\\$/\\$\\$/g
-      # default -> user:traefik
-  
-  # jaeger:
-  #   image: jaegertracing/all-in-one:1.17
-  #   networks:
-  #     - traefik
-  #   environment:
-  #     - COLLECTOR_ZIPKIN_HTTP_PORT=9411
-  #   ports:
-  #     - 5775:5775/udp
-  #     - 6831:6831/udp
-  #     - 6832:6832/udp
-  #     - 5778:5778
-  #     - 16686:16686
-  #     - 14268:14268
-  #     - 14250:14250
-  #     - 9411:9411
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.docker.network=traefik"
-  #     # load-balancer
-  #     - "traefik.http.services.${COMPOSE_PROJECT_NAME}_jaeger.loadbalancer.server.port=16686"
-  #     # http entrypoint
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger.rule=Host(`jaeger.${DOMAIN_NAME}`)"
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger.entrypoints=web"
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger.middlewares=redirect"
-  #     # middlewares
-  #     - "traefik.http.middlewares.redirect.redirectscheme.scheme=https"
-  #     # https entrypoint
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.rule=Host(`jaeger.${DOMAIN_NAME}`)"
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.entrypoints=websecure"
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.tls=true"
-  #     # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.tls.certresolver=letsencrypt"
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_jaeger_secure.middlewares=authtraefik"
-
-  influxdb:
-    image: influxdb:latest
-    networks:
-      - backend
-    volumes:
-      - influxdb_data:/var/lib/influxdb
-      - influxdb_conf:/etc/influxdb
-    environment:
-      INFLUXDB_HTTP_AUTH_ENABLED: 'true'
-      INFLUXDB_UDP_ENABLED: 'true'
-      INFLUXDB_REPORTING_DISABLED: 'true'
-      INFLUXDB_DB: ${COMPOSE_PROJECT_NAME}
-      INFLUXDB_ADMIN_USER: ${INFLUXDB_ADMIN_USER}
-      INFLUXDB_ADMIN_PASSWORD: ${INFLUXDB_ADMIN_PASSWORD}
     
   chronograf:
-    image: chronograf:latest
+    image: ${CHRONOGRAF_IMAGE}
+    restart: always
     networks:
-      - traefik
-      - backend
+      - public
+      - private
     depends_on:
       - influxdb
     volumes:
       - chronograf_data:/var/lib/chronograf
       - chronograf_conf:/etc/chronograf
     labels:
+      # enable traefik
       - "traefik.enable=true"
-      - "traefik.docker.network=traefik"
-      # load-balancer
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_graf.loadbalancer.server.port=8888"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_graf.loadbalancer.server.scheme=http"
-      # http entrypoint
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf.rule=Host(`graf.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf.entrypoints=web"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf.middlewares=redirect"
-      # middlewares
-      - "traefik.http.middlewares.redirect.redirectscheme.scheme=https"
-      # https entrypoint
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf_secure.rule=Host(`graf.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf_secure.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf_secure.tls=true"
-      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf_secure.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_graf_secure.middlewares=authtraefik"
+      - "traefik.docker.network=${PUBLIC_NETWORK}"
+      # define https redirect middleware.
+      - "traefik.http.middlewares.https_redirect.redirectscheme.scheme=https"
+      # specify exposed port.
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.loadbalancer.server.port=${CHRONOGRAF_PUBLIC_PORT}"
+      # define http entrypoint.
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.entrypoints=web"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.rule=Host(`${CHRONOGRAF_DNS_NAME}.${DNS_DOMAIN}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}.middlewares=https_redirect"
+      # define https entrypoint.
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.entrypoints=websecure"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.rule=Host(`${CHRONOGRAF_DNS_NAME}.${DNS_DOMAIN}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.tls=true"
+      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.tls.certresolver=letsencrypt"
+      # define and set basic auth middleware for secure route (optional).
+      - "traefik.http.middlewares.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_auth.basicauth.users=${CHRONOGRAF_USERNAME}:${CHRONOGRAF_PASSWORD_HASH}"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_secure.middlewares=${COMPOSE_PROJECT_NAME}_${CHRONOGRAF_DNS_NAME}_auth"
+    environment:
+      REPORTING_DISABLED: "true"
+      INFLUXDB_URL: "http://influxdb:8086"
 
-  # whoami:
-  #   image: containous/whoami:v1.3.0
-  #   networks:
-  #     - traefik
-  #   command:
-  #     - --port=8080
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.docker.network=traefik"
-  #     # load-balancer
-  #     - "traefik.http.services.${COMPOSE_PROJECT_NAME}_whoami.loadbalancer.server.port=8080"
-  #     # http entrypoint
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami.rule=Host(`whoami.${DOMAIN_NAME}`)"
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami.entrypoints=web"
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami.middlewares=redirect"
-  #     # middlewares
-  #     - "traefik.http.middlewares.redirect.redirectscheme.scheme=https"
-  #     # https entrypoint
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.rule=Host(`whoami.${DOMAIN_NAME}`)"
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.entrypoints=websecure"
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.tls=true"
-  #     # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_secure.tls.certresolver=letsencrypt"
-  #     - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_whoami_secure.middlewares=authtraefik"
+  influxdb:
+    image: ${INFLUXDB_IMAGE}
+    restart: always
+    networks:
+      - private
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+      - influxdb_conf:/etc/influxdb
+    environment:
+      INFLUXDB_UDP_ENABLED: "true"
+      INFLUXDB_REPORTING_DISABLED: "true"
 
 volumes:
-  letsencrypt:
   influxdb_data:
   influxdb_conf:
   chronograf_data:
   chronograf_conf:
-
-networks:
-  backend:
-  traefik:
-    external: true
-      
