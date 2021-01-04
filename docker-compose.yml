@@ -40,8 +40,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
-    depends_on:
-      - influxdb
+    # depends_on:
+    #   - influxdb
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "/etc/localtime:/etc/localtime:ro"
