@@ -7,7 +7,7 @@ version: "3.3"
 
 services:
   traefik:
-    image: ${TRAEFIK_IMAGE}
+    image: ${TRAEFIK_IMAGE}:${TRAEFIK_IMAGE_TAG}
     build:
       dockerfile: Dockerfile.traefik
       context: .
@@ -15,7 +15,7 @@ services:
         SOURCE_IMAGE: traefik:v2.3.6
 
   mkcert:
-    image: ${MKCERT_IMAGE}
+    image: ${MKCERT_IMAGE}:${MKCERT_IMAGE_TAG}
     build:
       dockerfile: Dockerfile.mkcert
       context: .

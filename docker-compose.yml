@@ -9,7 +9,7 @@ networks:
 
 services:
   traefik:
-    image: ${TRAEFIK_IMAGE}
+    image: ${TRAEFIK_IMAGE}:${TRAEFIK_IMAGE_TAG}
     restart: always
     networks:
       - public
@@ -47,7 +47,7 @@ services:
       - "/etc/localtime:/etc/localtime:ro"
     
   chronograf:
-    image: ${CHRONOGRAF_IMAGE}
+    image: ${CHRONOGRAF_IMAGE}:${CHRONOGRAF_IMAGE_TAG}
     restart: always
     networks:
       - public
@@ -82,7 +82,7 @@ services:
       INFLUXDB_URL: "http://influxdb:8086"
 
   influxdb:
-    image: ${INFLUXDB_IMAGE}
+    image: ${INFLUXDB_IMAGE}:${INFLUXDB_IMAGE_TAG}
     restart: always
     networks:
       - private
